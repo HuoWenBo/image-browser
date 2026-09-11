@@ -1,0 +1,156 @@
+{% extends "_base/base.html" %}
+
+{% block title %}标签管理 · 图库后台{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    {% set active = 'tag' %}
+    {% include "_base/admin_nav.html" %}
+
+    <!-- 工具栏 -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h1 class="text-2xl font-bold text-gray-800">
+            <i class="bi bi-tags text-blue-600 mr-2"></i>标签管理
+            <span class="text-sm font-normal text-gray-400 ml-2">按图片聚合，点击「管理标签」查看与维护</span>
+        </h1>
+        <div class="flex items-center gap-3">
+            <form id="search-form" class="flex items-center bg-white border border-gray-300 rounded-full pl-4 pr-2 py-1.5 shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition"
+                  role="search">
+                <input id="search-input"
+                       type="text"
+                       placeholder="搜索文件名或标签（如 蔚蓝档案）..."
+                       aria-label="Search"
+                       class="flex-1 border-none outline-none bg-transparent text-sm min-w-[220px] text-gray-800 placeholder-gray-500 pr-2">
+                <button id="search-clear"
+                        type="button"
+                        class="hidden flex-shrink-0 text-gray-400 hover:text-gray-600 transition z-10 p-1"
+                        title="清空搜索">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+                <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 py-1.5 text-sm font-medium transition flex-shrink-0">
+                    <i class="bi bi-search me-1"></i> 搜索
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 表格 -->
+    <div class="bg-white rounded-2xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                    <th class="px-4 py-3 font-medium">图片 ID</th>
+                    <th class="px-4 py-3 font-medium">图片</th>
+                    <th class="px-4 py-3 font-medium">标签</th>
+                    <th class="px-4 py-3 font-medium">标签数</th>
+                    <th class="px-4 py-3 font-medium">操作</th>
+                </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+                <tbody>
+                <tr id="empty-row" class="hidden">
+                    <td colspan="5" class="px-4 py-16 text-center text-gray-400">
+                        <i class="bi bi-inbox text-4xl block mb-2"></i>
+                        暂无数据
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        {% include "_base/pagination_bar.html" %}
+    </div>
+
+</div>
+
+<!-- 标签管理面板 -->
+<div id="panel-modal" class="hidden fixed inset-0 z-50">
+    <div id="panel-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <div class="relative flex items-center justify-center min-h-full p-4 pointer-events-none">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[92vh] flex flex-col overflow-hidden pointer-events-auto">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white flex-shrink-0">
+                <h2 class="text-lg font-bold text-gray-800 flex items-center gap-3">
+                    <span>
+                        <span id="panel-filename" class="block text-base">加载中...</span>
+                        <span id="panel-id" class="block text-xs text-gray-400 font-normal"></span>
+                    </span>
+                </h2>
+                <button id="panel-close" type="button" class="text-gray-400 hover:text-gray-600 transition" title="关闭">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="flex flex-col md:flex-row flex-1 overflow-hidden">
+                <!-- 图片预览：宽屏在左（一半），窄屏在上 -->
+                <div class="w-full md:w-1/2 h-64 md:h-auto bg-gray-900 flex items-center justify-center p-4 flex-shrink-0">
+                    <img id="panel-image" alt="图片预览"
+                         class="max-w-full max-h-full object-contain rounded-lg">
+                </div>
+                <!-- 标签管理：宽屏在右（一半），窄屏在下 -->
+                <div class="w-full md:w-1/2 flex-1 md:flex-none p-6 overflow-y-auto">
+                <!-- 新增标签 -->
+                <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
+                    <h3 class="text-sm font-semibold text-gray-600 mb-3">
+                        <i class="bi bi-plus-circle text-green-600 mr-1"></i>新增标签（只能选择库中已存在的标签）
+                    </h3>
+                    <div class="flex items-center gap-3">
+                        <div class="relative flex-1">
+                            <input id="suggest-input" type="text" autocomplete="off"
+                                   placeholder="输入标签名，从推荐中选择..."
+                                   class="w-full border border-gray-300 rounded-lg pl-4 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400">
+                            <button id="suggest-clear" type="button" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="清除">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                            <div id="suggest-dropdown" class="hidden absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto"></div>
+                            <p id="suggest-error" class="hidden text-xs text-red-500 mt-1.5"></p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <label for="suggest-score" class="text-xs text-gray-400 whitespace-nowrap">分数</label>
+                            <input id="suggest-score" type="number" step="0.01" min="0" max="1" value="1.0"
+                                   class="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400">
+                        </div>
+                        <button id="suggest-add" type="button"
+                                class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5 py-2 text-sm font-medium transition flex-shrink-0">
+                            <i class="bi bi-plus-lg"></i> 添加
+                        </button>
+                    </div>
+                    <!-- 临时待提交区：选中的标签先暂存，可删除，最后批量提交 -->
+                    <div id="pending-box" class="hidden mt-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-gray-500">
+                                <span class="font-semibold text-gray-700">已选择</span>
+                                <span id="pending-count" class="text-blue-600 font-semibold">0</span>
+                                个标签待提交
+                            </span>
+                            <button id="pending-submit" type="button" disabled
+                                    class="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg px-4 py-1.5 text-xs font-medium transition">
+                                提交全部
+                            </button>
+                        </div>
+                        <div id="pending-list" class="flex flex-wrap gap-1.5"></div>
+                    </div>
+                </div>
+                <!-- 已有标签 -->
+                <div id="panel-tags"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 大图预览 -->
+<div id="preview-modal" class="hidden fixed inset-0 z-[60]">
+    <div id="preview-backdrop" class="absolute inset-0 bg-black/90 backdrop-blur-sm"></div>
+    <div class="relative flex items-center justify-center min-h-full p-4 pointer-events-none">
+        <img id="preview-image" alt="放大预览"
+             class="max-w-full max-h-[92vh] object-contain rounded-lg shadow-2xl pointer-events-auto cursor-zoom-out">
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/utils.js"></script>
+<script src="/static/js/pagination.js"></script>
+<script src="/static/js/admin_tags.js"></script>
+{% endblock %}

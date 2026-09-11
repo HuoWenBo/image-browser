@@ -1,0 +1,19 @@
+<!-- 公共分页栏：每页条数控制 + 总数 + 分页器（各页 JS 负责初始化 select 值与 change 绑定） -->
+<div class="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+    <div class="flex items-center gap-4">
+        <label class="flex items-center gap-1.5 text-sm text-gray-500">
+            每页
+            <select id="per-page"
+                    class="border border-gray-300 rounded px-1.5 py-1 text-sm text-gray-700 bg-white focus:outline-none focus:border-blue-500">
+                <option value="10">10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            条
+        </label>
+        <div id="total-count" class="text-sm text-gray-500">共 0 条</div>
+    </div>
+    <div id="pagination"></div>
+</div>

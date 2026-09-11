@@ -1,0 +1,42 @@
+services:
+  api: &main_app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: image_browser:${IMAGE_BROWSER_VERSION:-latest}
+    restart: always
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      IMAGE_BROWSER_HOST: 0.0.0.0
+      IMAGE_BROWSER_DB_HOST: image_browser-db
+      IMAGE_BROWSER_DB_PORT: 5432
+      IMAGE_BROWSER_DB_USER: image_browser
+      IMAGE_BROWSER_DB_PASS: image_browser
+      IMAGE_BROWSER_DB_BASE: image_browser
+
+  db:
+    image: postgres:18.1-bookworm
+    hostname: image_browser-db
+    environment:
+      POSTGRES_PASSWORD: "image_browser"
+      POSTGRES_USER: "image_browser"
+      POSTGRES_DB: "image_browser"
+    volumes:
+      - image_browser-db-data:/var/lib/postgresql
+    restart: always
+    healthcheck:
+      test: pg_isready -U image_browser
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+
+
+volumes:
+  image_browser-db-data:
+    name: image_browser-db-data
