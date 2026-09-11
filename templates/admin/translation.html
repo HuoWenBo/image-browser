@@ -1,0 +1,186 @@
+{% extends "_base/base.html" %}
+
+{% block title %}翻译管理 · 图库后台{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    {% set active = 'translation' %}
+    {% include "_base/admin_nav.html" %}
+
+    <!-- 工具栏 -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h1 class="text-2xl font-bold text-gray-800">
+            <i class="bi bi-translate text-blue-600 mr-2"></i>标签翻译管理
+            <span class="text-sm font-normal text-gray-400 ml-2">全局标签翻译</span>
+        </h1>
+        <div class="flex items-center gap-3">
+            <!-- 视图切换 -->
+            <div class="flex bg-gray-100 rounded-lg p-1 text-sm">
+                <button id="tab-all" type="button" class="px-4 py-1.5 rounded-md font-medium transition">全部翻译</button>
+                <button id="tab-missing" type="button" class="px-4 py-1.5 rounded-md font-medium transition text-gray-500 hover:text-gray-700">缺失翻译</button>
+            </div>
+            <form id="search-form" class="flex items-center bg-white border border-gray-300 rounded-full pl-4 pr-2 py-1.5 shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition"
+                  role="search">
+                <input id="search-input"
+                       type="text"
+                       placeholder="搜索标签名或翻译内容..."
+                       aria-label="Search"
+                       class="flex-1 border-none outline-none bg-transparent text-sm min-w-[220px] text-gray-800 placeholder-gray-500 pr-2">
+                <button id="search-clear"
+                        type="button"
+                        class="hidden flex-shrink-0 text-gray-400 hover:text-gray-600 transition z-10 p-1"
+                        title="清空搜索">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+                <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 py-1.5 text-sm font-medium transition flex-shrink-0">
+                    <i class="bi bi-search me-1"></i> 搜索
+                </button>
+            </form>
+            <button id="batch-btn" type="button"
+                    class="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition flex-shrink-0">
+                <i class="bi bi-file-earmark-arrow-up"></i> 批量导入
+            </button>
+        </div>
+    </div>
+
+    <!-- 条件过滤 -->
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+        <select id="filter-type"
+                class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400">
+            <option value="">全部类型</option>
+            <option value="COPYRIGHT">作品</option>
+            <option value="CHARACTER_NAME">角色</option>
+            <option value="GENERAL">通用</option>
+        </select>
+        <select id="filter-subtype"
+                class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400">
+            <option value="">全部子类型</option>
+            <option value="CHARACTER">人物</option>
+            <option value="FACE_FEATURES">五官</option>
+            <option value="LIGHT_SHADOW">光影</option>
+            <option value="ACTION">动作</option>
+            <option value="ANIMAL">动物</option>
+            <option value="HAIRSTYLE">发型</option>
+            <option value="SCENE">场景</option>
+            <option value="POSE">姿势</option>
+            <option value="TEXT">文本</option>
+            <option value="CLOTHING">服装</option>
+            <option value="COMPOSITION">构图</option>
+            <option value="ITEM">物品</option>
+            <option value="ART_STYLE">画风</option>
+            <option value="BACKGROUND">背景</option>
+            <option value="EXPRESSION">表情</option>
+            <option value="EYE_SIGHT">视线</option>
+            <option value="QUALITY">质量</option>
+            <option value="BODY">身体</option>
+            <option value="OTHER">其他</option>
+        </select>
+        <select id="filter-language"
+                class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400">
+            <option value="">全部语言</option>
+            <option value="en">英文 (en)</option>
+            <option value="zh">中文 (zh)</option>
+        </select>
+        <button id="filter-reset" type="button"
+                class="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm border border-gray-200 rounded-lg transition">
+            重置
+        </button>
+    </div>
+
+    <!-- 表格 -->
+    <div class="bg-white rounded-2xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                    <th class="px-4 py-3 font-medium">标签 ID</th>
+                    <th class="px-4 py-3 font-medium">标签名</th>
+                    <th class="px-4 py-3 font-medium">类型</th>
+                    <th class="px-4 py-3 font-medium">子类型</th>
+                    <th class="px-4 py-3 font-medium">语言</th>
+                    <th class="px-4 py-3 font-medium">翻译内容</th>
+                    <th class="px-4 py-3 font-medium">操作</th>
+                </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+                <tbody>
+                <tr id="empty-row" class="hidden">
+                    <td colspan="7" class="px-4 py-16 text-center text-gray-400">
+                        <i class="bi bi-inbox text-4xl block mb-2"></i>
+                        暂无数据
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        {% include "_base/pagination_bar.html" %}
+    </div>
+
+</div>
+
+<!-- 新增 / 编辑翻译弹窗 -->
+<div id="form-modal" class="hidden fixed inset-0 z-50">
+    <div id="modal-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <div class="relative flex items-center justify-center min-h-full p-4 pointer-events-none">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 pointer-events-auto">
+            <h2 id="form-title" class="text-lg font-bold text-gray-800 mb-4">新增翻译</h2>
+            <form id="translation-form" class="space-y-4">
+                <div>
+                    <label for="form-tag-id" class="block text-xs text-gray-400 mb-1">标签 ID</label>
+                    <input id="form-tag-id" type="number" min="1" required
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400">
+                </div>
+                <div>
+                    <label for="form-language" class="block text-xs text-gray-400 mb-1">语言（如 zh / ja）</label>
+                    <input id="form-language" type="text" maxlength="16" value="zh" required
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400">
+                </div>
+                <div>
+                    <label for="form-content" class="block text-xs text-gray-400 mb-1">翻译内容</label>
+                    <textarea id="form-content" rows="2" maxlength="512" required
+                              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"></textarea>
+                </div>
+                <p id="form-error" class="hidden text-xs text-red-500"></p>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button id="modal-cancel" type="button" class="text-gray-500 hover:text-gray-700 px-4 py-2 text-sm">取消</button>
+                    <button id="modal-save" type="submit" class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-6 py-2 text-sm font-medium transition">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 批量导入弹窗 -->
+<div id="batch-modal" class="hidden fixed inset-0 z-50">
+    <div id="batch-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <div class="relative flex items-center justify-center min-h-full p-4 pointer-events-none">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 pointer-events-auto">
+            <h2 class="text-lg font-bold text-gray-800 mb-2">批量导入翻译</h2>
+            <p class="text-xs text-gray-400 mb-4">
+                每行一条，格式：<code class="bg-gray-100 px-1 rounded">标签名</code> 空格/Tab <code class="bg-gray-100 px-1 rounded">翻译内容</code>；
+                按标签名匹配 tag 表（同名标签会全部写入），未匹配的标签会跳过并在结果中列出。
+            </p>
+            <div class="flex items-center gap-3 mb-3">
+                <label for="batch-language" class="text-xs text-gray-400 whitespace-nowrap">语言</label>
+                <input id="batch-language" type="text" maxlength="16" value="zh"
+                       class="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400">
+            </div>
+            <textarea id="batch-input" rows="10" placeholder="1girl	少女&#10;blue_archive	蔚蓝档案&#10;solo	单人"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"></textarea>
+            <p id="batch-error" class="hidden text-xs text-red-500 mt-2"></p>
+            <div class="flex justify-end gap-3 pt-4">
+                <button id="batch-cancel" type="button" class="text-gray-500 hover:text-gray-700 px-4 py-2 text-sm">取消</button>
+                <button id="batch-submit" type="button" class="bg-green-600 hover:bg-green-700 text-white rounded-lg px-6 py-2 text-sm font-medium transition">导入</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/utils.js"></script>
+<script src="/static/js/pagination.js"></script>
+<script src="/static/js/admin_translations.js"></script>
+{% endblock %}
